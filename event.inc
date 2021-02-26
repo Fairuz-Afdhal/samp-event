@@ -8,7 +8,8 @@
 #define EVENT_INC 
 
 #include <a_samp>
-#include <YSI\y_hooks>
+#include <YSI_Coding\y_hooks>
+#tryinclude <izcmd>
 
 #if !defined EVENT_DATABASE 
     #define EVENT_DATABASE          "events.db"
@@ -21,10 +22,6 @@
 #if !defined EVENT_FILE_DIRECTORY
     #define EVENT_FILE_DIRECTORY    "events/"
 #endif 
-
-#if !defined EVENT_LEAVE_COMMAND
-    #define EVENT_LEAVE_COMMAND     "/leave"
-#endif
 
 #if !defined EVENT_MAX_CONCURRENT
     #define EVENT_MAX_CONCURRENT    (5)
@@ -42,18 +39,13 @@
     #define EVENT_MAX_FILE_DIR_LEN  (40)
 #endif
 
-#if !defined EVENT_MAX_COMMAND_LEN
-    #define EVENT_MAX_COMMAND_LEN   (20)
-#endif
-
 enum eEvent 
 {
     eID,
     eName[EVENT_MAX_NAME_LEN],
     eAuthor[MAX_PLAYER_NAME + 1],
     eVersion[EVENT_MAX_VERSION_LEN],
-    eFile[EVENT_MAX_FILE_DIR_LEN],
-    eCommand[EVENT_MAX_COMMAND_LEN]
+    eFile[EVENT_MAX_FILE_DIR_LEN]
 };
 
 static 
@@ -87,7 +79,7 @@ hook OnPlayerDisconnect(playerid, reason) {
     return 1;
 }
 
-bool: IsPlayerInEvent(playerid) {
+bool: IsPlayerInEvent2(playerid) {
     if(gPlayerEvent[playerid] != 0) {
         return true;
     }
@@ -96,7 +88,7 @@ bool: IsPlayerInEvent(playerid) {
 
 hook OnPlayerSpawn(playerid) {
 
-    if(IsPlayerInEvent(playerid)) {
+    if(IsPlayerInEvent2(playerid)) {
         CallRemoteFunction("API_OnPlayerSpawnInEvent", "ii", playerid, gPlayerEvent[playerid]);
     }
     return 1;
@@ -104,36 +96,33 @@ hook OnPlayerSpawn(playerid) {
 
 hook OnPlayerDeath(playerid, killerid, reason) {
 
-    if(IsPlayerInEvent(playerid)) {
+    if(IsPlayerInEvent2(playerid)) {
         CallRemoteFunction("API_OnPlayerDeathInEvent", "iiii", playerid, killerid, reason, gPlayerEvent[playerid]);
     }
     return 1;
 }
 
-hook OnPlayerCommandText(playerid, cmdtext[]) {
+CMD:leave(playerid, params[])
+{
+    RemovePlayerFromEvent(playerid);
+    return 1;
+}
 
-    if(!strcmp(cmdtext, EVENT_LEAVE_COMMAND, true)) {
-        RemovePlayerFromEvent(playerid);
-        return 1;
-    }
-
-    for(new i = 0; i < EVENT_MAX_CONCURRENT; i++) {
-        if(gEventData[i][eID] != 0) {
-            if(!strcmp(cmdtext, gEventData[i][eCommand], true)) {
-                if(gPlayerEvent[playerid] != 0) {
-
-                    new string[128];
-                    strcat(string, "You are already in an event! You must first leave with ");
-                    strcat(string, EVENT_LEAVE_COMMAND);
-                    SendClientMessage(playerid, 0xFF0000FF, string);
-                } else {
-                    PutPlayerInEvent(playerid, gEventData[i][eID]);
-                }
-                return 1;
+CMD:join(playerid, params[])
+{
+    for(new i = 0; i < EVENT_MAX_CONCURRENT; i++)
+    {
+        if(gEventData[i][eID] != 0) 
+        {
+            if(gPlayerEvent[playerid] != 0) 
+            {
+                SendClientMessage(playerid, 0xFF0000FF, "You are already in an event!");
+            } else {
+                PutPlayerInEvent(playerid, gEventData[i][eID]);
             }
         }
     }
-    return 0;
+    return 1;    
 }
 
 stock LoadEvent(id) {
@@ -167,7 +156,6 @@ stock LoadEvent(id) {
                db_get_field_assoc(result, "author", gEventData[index][eAuthor], MAX_PLAYER_NAME + 1);
                db_get_field_assoc(result, "version", gEventData[index][eVersion], EVENT_MAX_VERSION_LEN);
                db_get_field_assoc(result, "file", gEventData[index][eFile], EVENT_MAX_FILE_DIR_LEN);
-               db_get_field_assoc(result, "command", gEventData[index][eCommand], EVENT_MAX_COMMAND_LEN);
 
                db_free_result(result);
 
@@ -217,7 +205,6 @@ public UnloadEvent(id) {
     gEventData[event][eAuthor][0] = EOS;
     gEventData[event][eVersion][0] = EOS;
     gEventData[event][eFile][0] = EOS;
-    gEventData[event][eCommand][0] = EOS;
     return 1;
 }
 
@@ -251,14 +238,13 @@ static CreateDefaultTable() {
             `author` TEXT, \
             `version` TEXT, \
             `file` TEXT, \
-            `command` TEXT \
         );");
     }
 }
 
 forward RemovePlayerFromEvent(playerid);
 public RemovePlayerFromEvent(playerid) {
-    if(IsPlayerInEvent(playerid)) {
+    if(IsPlayerInEvent2(playerid)) {
         CallRemoteFunction("API_OnPlayerLeaveEvent", "ii", playerid, gPlayerEvent[playerid]);
         gPlayerEvent[playerid] = 0;
         return 1;
