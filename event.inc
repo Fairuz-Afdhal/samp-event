@@ -48,7 +48,7 @@ enum eEvent
     eFile[EVENT_MAX_FILE_DIR_LEN]
 };
 
-static 
+new 
     gPlayerEvent[MAX_PLAYERS],
     gEventData[EVENT_MAX_CONCURRENT][eEvent],
     DB: gDBHandle;
@@ -101,7 +101,7 @@ hook OnPlayerDeath(playerid, killerid, reason) {
     }
     return 1;
 }
-
+/*
 CMD:leave(playerid, params[])
 {
     RemovePlayerFromEvent(playerid);
@@ -124,7 +124,7 @@ CMD:join(playerid, params[])
     }
     return 1;    
 }
-
+*/
 stock LoadEvent(id) {
     
     for(new i = 0; i < EVENT_MAX_CONCURRENT; i++) {
@@ -208,13 +208,13 @@ public UnloadEvent(id) {
     return 1;
 }
 
-static PutPlayerInEvent(playerid, eventid) {
+stock PutPlayerInEvent(playerid, eventid) {
     gPlayerEvent[playerid] = eventid;
     CallRemoteFunction("API_OnPlayerJoinEvent", "ii", playerid, eventid);
     return 1;
 }
 
-static GetOpenEventSlot() {
+stock GetOpenEventSlot() {
     for(new i = 0; i < EVENT_MAX_CONCURRENT; i++) {
         if(gEventData[i][eID] == 0) {
             return i;
